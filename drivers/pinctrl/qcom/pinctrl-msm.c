@@ -71,6 +71,21 @@ struct msm_pinctrl {
 	const struct msm_pinctrl_soc_data *soc;
 	void __iomem *regs;
 };
+static bool skip(const char* p_name){
+#ifdef CONFIG_MACH_ZL1
+	char skip_string[16][8] = {"gpio0", "gpio1", "gpio2", "gpio3", "gpio81", "gpio82" , "gpio83", "gpio84", "gpio130", "gpio131"};
+	int i = 0;
+	if(NULL != p_name){
+		for(i = 0 ; i < 10 ; ){
+			if(!strcmp(p_name, skip_string[i])){
+				return true;
+			}
+			i++;
+		}
+	}
+#endif
+	return false;
+}
 
 static bool skip(const char* p_name){
 #ifdef CONFIG_PRODUCT_LE_ZL1

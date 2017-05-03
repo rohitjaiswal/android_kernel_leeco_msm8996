@@ -3110,7 +3110,16 @@ static int mdss_dsi_get_bridge_chip_params(struct mdss_panel_info *pinfo,
 end:
 	return rc;
 }
+=======
+>>>>>>> b73b3cf... import LeEco 5.019 source based against LA.HB.1.3.2-19000-8x96.0
 
+static struct device_attribute g_bist_attrs[] = {
+	__ATTR(panelmode, 0644,
+			android_panel_bist_show,
+			android_panel_bist_store),
+};
+
+#endif
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -3275,6 +3284,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	else
 		ctrl_pdata->shared_data->dsi1_active = true;
 
+	mdss_dsi_pm_qos_add_request();
 #ifdef LCD_BIST_TEST
 	for(attr_count=0; attr_count < ARRAY_SIZE(g_bist_attrs); attr_count++)
 	{

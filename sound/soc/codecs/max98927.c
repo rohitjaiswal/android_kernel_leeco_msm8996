@@ -335,7 +335,11 @@ static int maxdsm_f0_checking(int* fc_left, int* fc_right)
 
 	*fc_left = *fc_left/(1<<Q_DSM_ADAPTIVE_FC);
 	*fc_right = *fc_right/(1<<Q_DSM_ADAPTIVE_FC);
+<<<<<<< HEAD
 	pr_debug("%s count:%d fc_left:%d fc_right:%d rdc_left:%d rdc_right:%d\n", __func__, count, *fc_left, *fc_right, rdc_left, rdc_right);
+=======
+	pr_info("%s count:%d fc_left:%d fc_right:%d rdc_left:%d rdc_right:%d\n", __func__, count, *fc_left, *fc_right, rdc_left, rdc_right);
+>>>>>>> b73b3cf... import LeEco 5.019 source based against LA.HB.1.3.2-19000-8x96.0
 
 	return ret;
 }
@@ -369,6 +373,7 @@ static ssize_t maxdsm_write(struct file *filep, const char __user *buf,
 	int rc;
 	uint8_t *payload = (uint8_t *)&gParam[PKG_HEADER];
 
+	pr_info("maxdsm_write\n");
 	if (count > sizeof(uint32_t)*PAYLOAD_COUNT)
 		count = sizeof(uint32_t)*PAYLOAD_COUNT;
 
@@ -434,7 +439,7 @@ static ssize_t f0_detect_read(struct file *filep, char __user *buf,
 	}
 	*ppos += strlen(param);
 
-	pr_debug("%s value:%s\n", __func__, param);
+	pr_info("%s value:%s\n", __func__, param);
 	return strlen(param);
 }
 
@@ -448,7 +453,7 @@ static ssize_t f0_detect_write(struct file *filep, const char __user *buf,
 		pr_err("%s: copy_from_user failed - %d\n", __func__, rc);
 		return rc;
 	}
-	pr_debug("%s value:%s\n", __func__, param);
+	pr_info("%s value:%s\n", __func__, param);
 	return count;
 }
 
@@ -474,6 +479,7 @@ static int f0_detect_init(void)
 {
 	int result;
 
+	pr_info("%s\n", __func__);
 	result = misc_register(&f0_detect_ctrl_miscdev);
 	if (result != 0) {
 		pr_err("%s error:%d\n", __func__, result);
@@ -485,6 +491,7 @@ static int f0_detect_deinit(void)
 {
 	int result;
 
+	pr_info("%s\n", __func__);
 	result = misc_deregister(&f0_detect_ctrl_miscdev);
 	return result;
 }
@@ -640,7 +647,7 @@ static int max98927_reg_put_w(struct snd_kcontrol *kcontrol,
 	val = val << shift;
 
 	max98927_wrap_update_bits(max98927, reg, mask, val);
-	pr_debug("%s: register 0x%02X, value 0x%02X\n",
+	pr_info("%s: register 0x%02X, value 0x%02X\n",
 			__func__, reg, val);
 	return 0;
 }
@@ -667,7 +674,7 @@ static int max98927_reg_put(struct snd_kcontrol *kcontrol,
 
 	unsigned int sel = ucontrol->value.integer.value[0];
 	max98927_wrap_update_bits(max98927, reg, mask, sel << shift);
-	pr_debug("%s: register 0x%02X, value 0x%02X\n",
+	pr_info("%s: register 0x%02X, value 0x%02X\n",
 			__func__, reg, sel);
 	return 0;
 }
@@ -678,7 +685,10 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai,
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
-	pr_debug("%s: fmt 0x%08X\n", __func__, fmt);
+	//unsigned int invert = 0;
+	pr_info("------%s------\n", __func__);
+
+	pr_info("%s: fmt 0x%08X\n", __func__, fmt);
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 		case SND_SOC_DAIFMT_CBS_CFS:
 			max98927_wrap_update_bits(max98927, MAX98927_PCM_Master_Mode,
@@ -696,7 +706,7 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai,
 					MAX98927_PCM_Master_Mode_PCM_MSTR_MODE_Mask,
 					MAX98927_PCM_Master_Mode_PCM_MSTR_MODE_HYBRID);
 		default:
-			pr_warning("DAI clock mode unsupported");
+			pr_info("DAI clock mode unsupported");
 			return -EINVAL;
 	}
 
@@ -712,7 +722,7 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai,
 					MAX98927_PCM_Mode_Config_PCM_BCLKEDGE);
 			break;
 		default:
-			pr_warning("DAI invert mode unsupported");
+			pr_info("DAI invert mode unsupported");
 			return -EINVAL;
 	}
 
@@ -751,6 +761,7 @@ static int max98927_set_clock(struct max98927_priv *max98927,
 	int reg = MAX98927_PCM_Clock_setup;
 	int mask = MAX98927_PCM_Clock_setup_PCM_BSEL_Mask;
 	int value;
+	pr_info("------%s------\n", __func__);
 
 	if (max98927->master) {
 		int i;
@@ -793,6 +804,7 @@ static int max98927_dai_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 	int sampling_rate = 0;
+	pr_info("------%s------\n", __func__);
 
 	switch (snd_pcm_format_width(params_format(params))) {
 		case 16:
@@ -815,7 +827,7 @@ static int max98927_dai_hw_params(struct snd_pcm_substream *substream,
 					__func__, params_format(params));
 			goto err;
 	}
-	pr_debug("%s: format supported %d",
+	pr_info("%s: format supported %d",
 			__func__, params_format(params));
 
 	switch (params_rate(params)) {
@@ -882,7 +894,9 @@ static int max98927_dai_set_sysclk(struct snd_soc_dai *dai,
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
-	pr_debug("%s: clk_id %d, freq %d, dir %d\n", __func__, clk_id, freq, dir);
+	pr_info("------%s------\n", __func__);
+
+	pr_info("%s: clk_id %d, freq %d, dir %d\n", __func__, clk_id, freq, dir);
 
 	max98927->sysclk = freq;
 	return 0;
@@ -893,6 +907,7 @@ static int max98927_mute(struct snd_soc_dai *dai, int mute)
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
+	pr_info("------%s------%d \n", __func__, mute);
 	if (!mute){
 	if(max98927->regmap_l && max98927->left_i2c){
 		if(max98927->spk_mode & 0x01){
@@ -946,7 +961,7 @@ static const struct snd_soc_dai_ops max98927_dai_ops = {
 static int max98927_dac_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
-	pr_debug("max98927_dac_event: %d\n",event);
+	pr_info("max98927_dac_event: %d\n",event);
 	switch (event) {
 		case SND_SOC_DAPM_POST_PMU:
 			break;
@@ -978,7 +993,7 @@ static int max98927_spk_gain_get(struct snd_kcontrol *kcontrol,
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
 	ucontrol->value.integer.value[0] = max98927->spk_gain;
-	pr_debug("max98927_spk_gain_get: spk_gain setting returned %d\n",
+	pr_info("max98927_spk_gain_get: spk_gain setting returned %d\n",
 			(int) ucontrol->value.integer.value[0]);
 
 	return 0;
@@ -990,7 +1005,7 @@ static int max98927_spk_gain_put(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 	unsigned int sel = ucontrol->value.integer.value[0];
-	pr_debug("max98927_spk_gain_put: %d\n",sel);
+	pr_info("max98927_spk_gain_put: %d\n",sel);
 
 	if (sel < ((1 << MAX98927_Speaker_Gain_Width) - 1)) {
 		max98927_wrap_update_bits(max98927, MAX98927_Speaker_Gain,
