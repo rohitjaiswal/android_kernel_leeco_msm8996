@@ -57,7 +57,6 @@
 #include "debug.h"
 #include "xhci.h"
 
-#define DWC3_HVDCP_CHG_MAX 1800
 static struct dwc3_msm *_msm_dwc;
 #define DWC3_ACA_CHG_MAX 1000
 #define DWC3_CDP_CHG_MAX 1000
@@ -195,6 +194,7 @@ enum dwc3_chg_type {
 	DWC3_DCP_CHARGER,
 	DWC3_CDP_CHARGER,
 	DWC3_PROPRIETARY_CHARGER,
+	DWC3_FLOATED_CHARGER,
 };
 
 struct dwc3_msm {
@@ -277,8 +277,6 @@ struct dwc3_msm {
 	atomic_t                in_p3;
 	unsigned int		lpm_to_suspend_delay;
 	bool			init;
-	bool			vbus_set_by_cclogic;
-	int			vbus_on;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1883,6 +1881,7 @@ static const char *chg_to_string(enum dwc3_chg_type chg_type)
 	case DWC3_DCP_CHARGER:		return "USB_DCP_CHARGER";
 	case DWC3_CDP_CHARGER:		return "USB_CDP_CHARGER";
 	case DWC3_PROPRIETARY_CHARGER:	return "USB_PROPRIETARY_CHARGER";
+	case DWC3_FLOATED_CHARGER:	return "USB_FLOATED_CHARGER";
 	default:			return "UNKNOWN_CHARGER";
 	}
 }
@@ -2502,69 +2501,6 @@ int pi5usb_set_msm_usb_host_mode(bool mode)
 }
 EXPORT_SYMBOL(pi5usb_set_msm_usb_host_mode);
 
-static int _msm_usb_vbus_on(struct dwc3_msm *_mdwc)
-{
-	struct dwc3_msm	*mdwc = (_mdwc ? _mdwc : _msm_dwc);
-	int ret = 0;
-
-	if (IS_ERR_OR_NULL(mdwc))
-		return -ENODEV;
-
-	if (!IS_ERR_OR_NULL(mdwc->vbus_reg) && !mdwc->vbus_on) {
-		ret = regulator_enable(mdwc->vbus_reg);
-		dev_info(mdwc->dev, "VBUS ON\n");
-	}
-
-	if (!ret)
-		mdwc->vbus_on = 1;
-	else
-		dev_info(mdwc->dev, "VBUS ON FAILED %d\n", ret);
-
-	return 0;
-}
-
-static int _msm_usb_vbus_off(struct dwc3_msm *_mdwc)
-{
-	struct dwc3_msm	*mdwc = (_mdwc ? _mdwc : _msm_dwc);
-	int ret = 0;
-
-	if (IS_ERR_OR_NULL(mdwc))
-		return -ENODEV;
-
-	if (!IS_ERR_OR_NULL(mdwc->vbus_reg) && mdwc->vbus_on) {
-		ret = regulator_disable(mdwc->vbus_reg);
-		dev_info(mdwc->dev, "VBUS OFF\n");
-	}
-
-	if (!ret)
-		mdwc->vbus_on = 0;
-	else
-		dev_info(mdwc->dev, "VBUS OFF FAILED %d\n", ret);
-
-	return 0;
-
-}
-
-int msm_usb_vbus_set(struct dwc3_msm *_mdwc, bool on, bool ext_call)
-{
-	struct dwc3_msm *mdwc = (_mdwc ? _mdwc : _msm_dwc);
-	int ret = 0;
-
-	if (IS_ERR_OR_NULL(mdwc))
-		return -ENODEV;
-
-	if ((ext_call ^ mdwc->vbus_set_by_cclogic))
-		return 0;
-
-	if (on)
-		ret = _msm_usb_vbus_on(mdwc);
-	else
-		ret = _msm_usb_vbus_off(mdwc);
-
-	return ret;
-}
-EXPORT_SYMBOL(msm_usb_vbus_set);
-
 static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 {
 	struct dwc3_msm *mdwc = data;
@@ -2908,54 +2844,6 @@ static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 
 static void dwc3_otg_sm_work(struct work_struct *w);
 static void dwc3_float_chgtype_work(struct work_struct *w);
-
-#ifdef MHL_POWER_OUT
-struct platform_device *dwc3_mhl_t;
-struct dwc3_mhl *dwc3_mhl_n;
-
-bool start_init;
-
-int dwc3_otg_set_mhl_power(bool enable)
-{
-       int ret;
-       if (IS_ERR(dwc3_mhl_n->vbus_mhl)) {
-              pr_err("Failed to get dwc3_mhl_t vbus regulator");
-              return -ENODEV;
-       }
-       pr_err("%s: enable: %d\n", __func__, enable);
-       if (enable)
-              ret = regulator_enable(dwc3_mhl_n->vbus_mhl);
-       else
-              ret = regulator_disable(dwc3_mhl_n->vbus_mhl);
-
-       return ret;
-}
-EXPORT_SYMBOL(dwc3_otg_set_mhl_power);
-
-void dwc3_otg_start_mhl_power(void)
-{
-       if (start_init == true) {
-              pr_err("%s: returned caused by start_init == true...\n",
-                            __func__);
-              return;
-       }
-       pr_err("%s:\n", __func__);
-       if (dwc3_mhl_n == NULL) {
-              pr_err("%s: returned caused by dwc3_mhl_n == NULL...\n",
-                            __func__);
-              return;
-              }
-       start_init = true;
-       dwc3_mhl_n->vbus_mhl =
-                     devm_regulator_get(&dwc3_mhl_t->dev, "vbus_dwc3");
-       if (IS_ERR(dwc3_mhl_n->vbus_mhl)) {
-              pr_err("Failed to get dwc3_mhl_t vbus regulator");
-              return;
-       }
-}
-EXPORT_SYMBOL(dwc3_otg_start_mhl_power);
-
-#endif
 
 #ifdef MHL_POWER_OUT
 struct platform_device *dwc3_mhl_t;
@@ -4119,16 +4007,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				dbg_event(0xFF, "CHG gsync",
 					atomic_read(
 						&mdwc->dev->power.usage_count));
-
-				/* check dp/dm for SDP & runtime_put if !SDP */
-				if (mdwc->detect_dpdm_floating &&
-				    mdwc->chg_type == DWC3_SDP_CHARGER) {
-					dwc3_check_float_lines(mdwc);
-					if (mdwc->chg_type != DWC3_SDP_CHARGER)
-						break;
-				}
 				dwc3_otg_start_peripheral(mdwc, 1, false);
->>>>>>> b73b3cf... import LeEco 5.019 source based against LA.HB.1.3.2-19000-8x96.0
 				mdwc->otg_state = OTG_STATE_B_PERIPHERAL;
 				work = 1;
 				dwc3_msm_gadget_vbus_draw(mdwc, 500);

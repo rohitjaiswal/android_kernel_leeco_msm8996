@@ -476,15 +476,12 @@ enum aicl_short_deglitch_voters {
 	HVDCP_SHORT_DEGLITCH_VOTER,
 	NUM_HW_SHORT_DEGLITCH_VOTERS,
 };
-<<<<<<< HEAD
 enum hvdcp_voters {
 	HVDCP_PMIC_VOTER,
 	HVDCP_OTG_VOTER,
 	HVDCP_PULSING_VOTER,
 	NUM_HVDCP_VOTERS,
 };
-=======
-
 #ifdef CONFIG_MACH_ZL1
 enum thermal_scn {
 	THERMAL_NORMAL,
@@ -495,7 +492,6 @@ enum thermal_scn {
 
 struct smbchg_chip *pd_smbchg_chip;
 
->>>>>>> b73b3cf... import LeEco 5.019 source based against LA.HB.1.3.2-19000-8x96.0
 static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -3537,7 +3533,9 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	int rc = 0;
 	int prev_therm_lvl;
 	int thermal_fcc_ma;
+#ifdef CONFIG_MACH_ZL1
 	int usb_icl_ma = 0;
+#endif
 
 #if USB_THERMAL_DEBUG
 	if(system_temp_debug > 0)
@@ -3605,6 +3603,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 		vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, false,0);
 
 	} else {
+#ifdef CONFIG_MACH_ZL1
 		if(chip->therm_scn == THERMAL_SCN) {
 			thermal_fcc_ma = (int)chip->thermal_mitigation_scn[chip->therm_lvl_sel];
 			usb_icl_ma = (int)chip->usb_thermal_mitigation[chip->therm_lvl_sel];
@@ -3614,15 +3613,16 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 			pr_info("temp lvl: %d,fcc ma:%d,icl:%d\n",
 				chip->therm_lvl_sel,thermal_fcc_ma,usb_icl_ma);
 		} else {
+#endif
 			thermal_fcc_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
 			//disable usb icl limit for normal scn
 			vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, false,0);
 
 			pr_info("temp lvl: %d,fcc ma:%d\n",
 				chip->therm_lvl_sel,thermal_fcc_ma);
+#ifdef CONFIG_MACH_ZL1
 		}
-
-
+#endif
 		rc = vote(chip->fcc_votable, THERMAL_FCC_VOTER, true,
 					thermal_fcc_ma);
 		if (rc < 0)
@@ -8548,14 +8548,15 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	if (rc)
 		dev_err(chip->dev, "Couldn't switch to Syson LDO, rc=%d\n",
 			rc);
-        return rc;
-}
 	/* select digital AICL mode */
 	rc = smbchg_sec_masked_write(chip,
 		chip->misc_base + MISC_TRIM_OPT_15_8, AICL_INIT_BIT, 0);
 	if (rc)
 		pr_err("Couldn't write to MISC_TRIM_OPTIONS_15_8 rc=%d\n",
 			rc);
+
+        return rc;
+}
 
 
 static struct of_device_id smbchg_match_table[] = {
@@ -10100,9 +10101,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	 * workaround ldo19 current reverse boost
 	 */
 	smbchg_sec_masked_write(chip, 0x16F2 , 0x10, 0x0);
-#endif
-
 	chip->chg_reset = 0;
+#endif	
 	smbchg_charging_en(chip,0);
 	msleep(2);
 	smbchg_charging_en(chip,1);
